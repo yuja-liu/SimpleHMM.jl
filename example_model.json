@@ -1,0 +1,14 @@
+{
+    "name": "gc_model",
+    "hidden_state_space": [0, 1],
+    "emission_space": [1, 2, 3, 4, 5],
+    "transition_matrix": [0.8, 0.1, 0.2, 0.9],
+    "initial_distribution": [0.5, 0.5],
+    "emission_matrix": [
+        0.2, 0, 
+        0.5, 0.1, 
+        0.2, 0.4, 
+        0.1, 0.4,
+        0, 0.1
+    ]
+}
