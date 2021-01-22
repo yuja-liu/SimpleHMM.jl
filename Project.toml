@@ -1,0 +1,4 @@
+name = "HMMlib"
+uuid = "b54418be-38bf-423c-8dbb-66731efe0690"
+authors = ["RandolphLiu <rainl199922@gmail.com>"]
+version = "0.1.0"

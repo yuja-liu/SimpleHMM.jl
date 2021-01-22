@@ -4,6 +4,14 @@ module HMMlib
 using StatsBase    # for sampling
 using LinearAlgebra
 
+export 
+HMM, emit, baum_welch, viterbi, log_likelihood,
+get_param, get_config,
+HMM_from_json
+
+# include the io utilities
+include("io.jl")
+
 # Definition of HMM model type
 struct HMM
     # the states can be string, int, etc.
@@ -229,4 +237,4 @@ function viterbi(model::HMM, Y::Array{T}) where T <: Any
     return(X_max)
 end
 
-end
+end    # module
