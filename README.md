@@ -4,7 +4,7 @@
 
 ### Install
 
-Start the Julia REPL. Press `[` to enter the Pkg mode.
+Start the Julia REPL. Press `]` to enter the Pkg mode.
 Then execute the following line:
 
 ```
