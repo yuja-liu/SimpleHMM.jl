@@ -348,28 +348,28 @@ function baum_welch(initial_model::Gaussian_HMM, Y::AbstractArray, threshold = 1
     return model
 end
 
-function viterbi(model::HMM, Y::AbstractArray)
+function viterbi(model::AbstractHMM, Y::AbstractArray)
     # The Viterbi algorithm to infer the hidden states
 
     # variable shorthands
-    μ⁰, A, B = get_param(model)
-    S, V, J, K = get_config(model)
-    N = length(Y)    # length of observed sequence
-    # convert state to index
-    V_idx = Dict( V[i] => i for i in 1:K )
+    μ⁰ = model.initial_distribution
+    A = model.transition_matrix
+    S = model.hidden_state_space
+    J = length(S)    # size of hidden state space
+    N = length(Y)    # length of observed seq
     # Φₙ(i) is the maximum log-likelihood of the hidden states
     # from 0 to n-1, ending with Xₙ = sᵢ
     # Φₙ(i) = max{i₀ to iₙ₋₁} lnP(Y₀ⁿ, X₀ⁿ⁻¹, Xₙ = sᵢ)
     Φ = zeros(Float64, (J, N))
     Ψ = zeros(Float64, (J, N))    # for traceback
     # Initialization
-    Φ[:, 1] = log.(μ⁰) + log.(B[:, V_idx[Y[1]]])
+    Φ[:, 1] = log.(μ⁰) + log.([ b(model, i, Y[1]) for i in 1:J ])
     # Recursion
     for n = 2:N
         for i = 1:J
             idx = argmax(log.(A[:, i]) + Φ[:, n - 1])
             Ψ[i, n] = idx
-            Φ[i, n] = log(B[i, V_idx[Y[n]]]) + log(A[idx, i]) + Φ[idx, n - 1]
+            Φ[i, n] = log(b(model, i, Y[n])) + log(A[idx, i]) + Φ[idx, n - 1]
         end
     end
     # traceback
