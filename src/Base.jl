@@ -1,17 +1,6 @@
-module HMMlib
-# Simple HMM library
-
 using StatsBase    # for sampling
 using Random, Distributions    # for continuous HMM
 using LinearAlgebra
-
-export 
-HMM, Gaussian_HMM, emit, baum_welch, viterbi, log_likelihood,
-get_param, get_config,
-HMM_from_json
-
-# include the io utilities
-include("io.jl")
 
 # Definition of HMM model type
 struct HMM
@@ -30,12 +19,12 @@ struct HMM
             error("Size of hidden state space: $J and 
             size of initial distribution: $(length(μ⁰)) mismatch")
         elseif size(A) != (J, J)
-            error("Size of hidden state space: $J disagrees with 
-            size of transition matrix: $(size(A, 1)) × $(size(A, 2))")
+            error("Size of hidden state space: $J disagrees with " *
+            "size of transition matrix: $(size(A, 1)) × $(size(A, 2))")
         elseif size(B) != (J, K)
-            error("Size of hidden state space: $J or
-            size of emission space: $K disagrees with
-            size of emission matrix: $(size(B, 1)) × $(size(B, 2))")
+            error("Size of hidden state space: $J or " *
+            "size of emission space: $K disagrees with " *
+            "size of emission matrix: $(size(B, 1)) × $(size(B, 2))")
         elseif !all(x -> abs(x - 1.0) < 1e-12, sum(A, dims = 2))
             error("The transition matrix is not normalized")
         elseif !all(x -> abs(x - 1.0) < 1e-12, sum(B, dims = 2))
@@ -137,6 +126,50 @@ function get_config(model::Gaussian_HMM)
     )
 end
 
+function init_random_HMM(J, K, type = "discrete")
+    # initialize an HMM with random (but valid) parameters
+    # J is the number of hidden states
+    # if discrete, K is the number of observed states
+    # elseif continuous, K is the number of Gaussian mixtures
+    # the hiddden/observed states are represented by integers
+
+    # the transition probability
+    A = rand(Float64, (J, J))
+    A ./= sum(A, dims = 2) * ones(Float64, (1, J)) # normalize
+    # the initial distribution
+    μ⁰ = rand(Float64, J)
+    μ⁰ ./= sum(μ⁰)
+
+    if type == "discrete"
+        B = rand(Float64, (J, K))
+        B ./= sum(B, dims = 2) * ones(Float64, (1, K))
+        model = HMM(
+            collect(0:(J - 1)),    # the hidden states start from 0
+            collect(1:K),
+            μ⁰,
+            A,
+            B,
+            "random_HMM"
+        )
+    elseif type == "Gaussian"
+        M = rand(Float64, (J, K))    # Gaussian center
+        # note that the deviance is not randomized!
+        σ² = ones(Float64, (J, K))    # Gaussian deviation
+        W = rand(Float64, (J, K))    # mixture coefficient
+        W ./= sum(W, dims = 2)
+        model = Gaussian_HMM(
+            collect(0:(J - 1)),
+            μ⁰,
+            A,
+            M,
+            σ²,
+            W,
+            "random_HMM"
+        )
+    end
+    return model
+end
+
 function emit(model::HMM, l::Int64)
     # generate an emitted sequence and hidden state sequence
     # with given HMM model
@@ -209,7 +242,7 @@ function forward(model::AbstractHMM, Y::AbstractArray)
     J = length(S)    # size of hidden state space
     N = length(Y)    # length of observed seq
     # Allocate mem
-    # Cₙ = P(Yₙ|Y₀ⁿ⁻¹), C₀ = P(Y₀)
+    # cₙ = P(Yₙ|Y₀^{n-1}), c₀ = P(Y₀)
     # α̂ₙ(i) = P(Xₙ=sᵢ|Y₀ⁿ), α̂₀(i) = P(X₀=sᵢ|Y₀)
     C = zeros(Float64, N)
     α̂ = zeros(Float64, (J, N))
@@ -219,8 +252,8 @@ function forward(model::AbstractHMM, Y::AbstractArray)
     α̂[:, 1] /= C[1]
     # Recursion
     for n = 2:N
-        # notice Aᵀ: summing the multiplication over columns
-        α̂[:, n] = [ b(model, i, Y[n]) for i in 1:J ] .* (transpose(A) * α̂[:, n - 1])
+        # notice A': summing the multiplication over columns
+        α̂[:, n] = [ b(model, i, Y[n]) for i in 1:J ] .* (A' * α̂[:, n - 1])
         C[n] = sum(α̂[:, n])
         α̂[:, n] /= C[n]
     end
@@ -245,7 +278,7 @@ function backward(model::AbstractHMM, Y::AbstractArray)
     J = length(S)    # size of hidden state space
     N = length(Y)    # length of observed seq
     # Allocate mem
-    # βₙ(i) = (Yᴺₙ₊₁ | Xₙ = sᵢ), β_N = 1
+    # βₙ(i) = (Y_{n+1}^N | Xₙ = sᵢ), β_N = 1
     β̂ = zeros(Float64, (J, N))
     # get the C terms
     α̂, C = forward(model, Y)
@@ -284,7 +317,7 @@ function baum_welch(initial_model::HMM, Y::AbstractArray, threshold = 1e-2)
         γ = C' .* α̂ .* β̂
         # ξₙ(i, j) is the possibility that the n_th hidden state is sᵢ
         # and transit to n+1_th hidden state of sⱼ
-        # ξₙ(i, j) = P(Xₙ = sᵢ, Xₙ₊₁ = sⱼ|Y; θ)
+        # ξₙ(i, j) = P(Xₙ = sᵢ, X_{n + 1} = sⱼ|Y; θ)
         ξ = zeros(Float64, (J, J, N - 1))    # allocate mem
         for n  = 1:(N - 1)
             ξ[:, :, n] = α̂[:, n] * (B[:, V_idx[Y[n + 1]]] .* β̂[:, n + 1])' .* A
@@ -402,7 +435,7 @@ function viterbi(model::AbstractHMM, Y::AbstractArray)
     N = length(Y)    # length of observed seq
     # Φₙ(i) is the maximum log-likelihood of the hidden states
     # from 0 to n-1, ending with Xₙ = sᵢ
-    # Φₙ(i) = max{i₀ to iₙ₋₁} lnP(Y₀ⁿ, X₀ⁿ⁻¹, Xₙ = sᵢ)
+    # Φₙ(i) = max{i₀ to i_{n-1}} lnP(Y₀^n, X₀^{n-1}, Xₙ = sᵢ)
     Φ = zeros(Float64, (J, N))
     Ψ = zeros(Float64, (J, N))    # for traceback
     # Initialization
@@ -425,5 +458,3 @@ function viterbi(model::AbstractHMM, Y::AbstractArray)
     X_max = S[i_max]
     return(X_max)
 end
-
-end    # module
