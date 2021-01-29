@@ -106,7 +106,7 @@ The emission probability conforms a Gaussian mixture model and the number of mix
 # Initialized a random HMM with continuous emission
 # The size of hidden states space is 2
 # The number of mixtures for the Gaussian mixture model is 2
-continuous_model = init_random_HMM(2, 2, type = "Gaussian")
+continuous_model = init_random_HMM(2, 2, "Gaussian")
 
 # The emit an observed sequence or infer the parameters/hidden states
 # just like we did to the discrete model
@@ -120,4 +120,5 @@ in Computational Biology programme.
 
 ```
 [1]L. R. Rabiner, “A tutorial on hidden Markov models and selected applications in speech recognition,” Proceedings of the IEEE, vol. 77, no. 2, pp. 257–286, Feb. 1989, doi: 10.1109/5.18626.
+[2]A. N. of Loc Nguyen, “Continuous Observation Hidden Markov Model,” Revista Kasmera, vol. 44, pp. 65–149, Jun. 2016.
 ```
