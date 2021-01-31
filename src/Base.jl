@@ -25,11 +25,12 @@ struct HMM
             error("Size of hidden state space: $J or " *
             "size of emission space: $K disagrees with " *
             "size of emission matrix: $(size(B, 1)) × $(size(B, 2))")
-        elseif !all(x -> abs(x - 1.0) < 1e-12, sum(A, dims = 2))
+        elseif !all(x -> abs(x - 1.0) < 1e-10, sum(A, dims = 2))
             error("The transition matrix is not normalized")
-        elseif !all(x -> abs(x - 1.0) < 1e-12, sum(B, dims = 2))
+        elseif !all(x -> abs(x - 1.0) < 1e-10, sum(B, dims = 2))
             error("The emission matrix is not normalized")
-        elseif abs(sum(μ⁰) - 1.0) ≥ 1e-12
+        elseif abs(sum(μ⁰) - 1.0) ≥ 1e-6
+            # there will be round-off errors for μ⁰, more tolerant
             error("The initial distribution is not normalized")
         end
         new(S, V, μ⁰, A, B, name)
@@ -56,9 +57,9 @@ struct Gaussian_HMM
         elseif size(A) != (J, J)
             error("Size of hidden state space: $J disagrees with " *
             "size of transition matrix: $(size(A, 1)) × $(size(A, 2))")
-        elseif !all(x -> abs(x - 1.0) < 1e-12, sum(A, dims = 2))
+        elseif !all(x -> abs(x - 1.0) < 1e-10, sum(A, dims = 2))
             error("The transition matrix is not normalized")
-        elseif abs(sum(μ⁰) - 1.0) ≥ 1e-12
+        elseif abs(sum(μ⁰) - 1.0) ≥ 1e-6
             error("The initial distribution is not normalized")
         elseif size(M) != (J, K)
             error("The size of Gaussian center matrix: " *
@@ -304,7 +305,7 @@ function baum_welch(initial_model::HMM, Y::AbstractArray, threshold = 1e-2)
     # the parameters are already initialized inside initial_model
     model = initial_model   # copy the initial model
     Δ = Inf    # difference between the current and previous log-likelihood
-    lnL = log_likelihood(model, Y)    # initial log likelihood
+    𝓛 = log_likelihood(model, Y)    # initial log likelihood
 
     while(Δ > threshold)
         # variable shorthands
@@ -341,9 +342,10 @@ function baum_welch(initial_model::HMM, Y::AbstractArray, threshold = 1e-2)
         model = HMM(S, V, μ⁰_new, A_new, B_new, initial_model.name)
 
         # update Δln(L)
-        new_lnL = log_likelihood(model, Y)
-        Δ = abs(lnL - new_lnL)
-        lnL = new_lnL
+        new_𝓛 = log_likelihood(model, Y)
+        Δ = abs(𝓛 - new_𝓛)
+        𝓛 = new_𝓛
+        println("Δ:", Δ)
     end
     return model
 end
@@ -357,7 +359,7 @@ function baum_welch(initial_model::Gaussian_HMM, Y::AbstractArray, threshold = 1
     # the parameters are already initialized inside initial_model
     model = initial_model   # copy the initial model
     Δ = Inf    # difference between the current and previous log-likelihood
-    lnL = log_likelihood(model, Y)    # initial log likelihood
+    𝓛 = log_likelihood(model, Y)    # initial log likelihood
     while(Δ > threshold)
         # variable shorthands
         μ⁰, A, M, σ², W = get_param(model)
@@ -417,9 +419,10 @@ function baum_welch(initial_model::Gaussian_HMM, Y::AbstractArray, threshold = 1
         model = Gaussian_HMM(S, μ⁰_new, A_new, M_new, σ²_new, W_new, initial_model.name)
 
         # update Δln(L)
-        new_lnL = log_likelihood(model, Y)
-        Δ = abs(lnL - new_lnL)
-        lnL = new_lnL
+        new_𝓛 = log_likelihood(model, Y)
+        Δ = abs(𝓛 - new_𝓛)
+        𝓛 = new_𝓛
+        println("Δ:", Δ)
     end
     return model
 end
