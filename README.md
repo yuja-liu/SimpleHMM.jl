@@ -8,7 +8,7 @@ Start the Julia REPL. Press `]` to enter the Pkg mode.
 Then execute the following line:
 
 ```
-Pkg> add https://github.com/RandolphLiu/SimpleHMM.jl.git
+Pkg> add SimpleHMM
 ```
 
 By now `SimpleHMM` is all installed and ready to use!
